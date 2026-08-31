@@ -447,7 +447,7 @@ class PSPNet(nn.Module):
 # ============================================================
 
 
-def loop_treino(dataloader, device, modelo, loss_fc, otimizador):
+def train_loop(dataloader, device, modelo, loss_fc, otimizador):
 
     modelo.train()
     total_loss = 0
@@ -469,7 +469,7 @@ def loop_treino(dataloader, device, modelo, loss_fc, otimizador):
 
 
 
-def loop_teste(dataloader, device, modelo, loss_fc):
+def test_loop(dataloader, device, modelo, loss_fc):
 
     modelo.eval()
 
