@@ -29,6 +29,7 @@ train_dataset, val_dataset = random_split(
 train_loader = DataLoader(train_dataset, batch_size=8, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=8, shuffle=False)
 model = UNet(num_classes=2).to(device)
+print("Model:", model)
 
 # Funções de perda ponderadas para lidar com o desbalanceamento das classes
 # Classe 0 = background
@@ -39,16 +40,17 @@ loss_fn = nn.CrossEntropyLoss(weight=weights)
 
 # Otimizador
 optimizer = create_optimizer("Adam", model, lr=1e-3)
+print("Optimizer:", optimizer)
 
 # Treinamento e validação do modelo
 NUM_EPOCHS = 5
 for epoch in range(NUM_EPOCHS):
-    plot_resultados(model, val_loader, device, num_images=4)
-    train_loss = train_loop(train_loader, model, loss_fn, optimizer)
-    val_loss, val_dice = test_loop(val_loader, model, loss_fn)
+    train_loss = train_loop(train_loader, device, model, loss_fn, optimizer)
+    val_loss, pixel_acc = test_loop(val_loader, device, model, loss_fn)
     print(
         f"Epoch {epoch + 1}/{NUM_EPOCHS} | "
         f"Train Loss: {train_loss:.4f} | "
         f"Val Loss: {val_loss:.4f} | "
-        f"Dice: {val_dice:.4f}"
+        f"Pixel Accuracy: {pixel_acc:.4f}"
     )
+    plot_resultados(model, val_loader, device, num_images=4)

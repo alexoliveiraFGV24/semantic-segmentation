@@ -88,15 +88,15 @@ class UNet(nn.Module):
         self.pool = nn.MaxPool2d(2, 2)
 
         self.up3 = nn.ConvTranspose2d(256, 128, 2, 2)
-        self.dec3 = ConvBlock(256, 128)
+        self.dec3 = ConvBlock(384, 128)
 
         self.up2 = nn.ConvTranspose2d(128, 64, 2, 2)
-        self.dec2 = ConvBlock(128, 64)
+        self.dec2 = ConvBlock(192, 64)
 
-        self.up1 = nn.ConvTranspose2d(64, 64, 2, 2)
-        self.dec1 = ConvBlock(128, 64)
+        self.up1 = nn.ConvTranspose2d(64, 32, 2, 2)
+        self.dec1 = ConvBlock(96, 32)
 
-        self.final_conv = nn.Conv2d(64, num_classes, 1)
+        self.final_conv = nn.Conv2d(32, num_classes, 1)
 
     def forward(self, x):
 
@@ -112,11 +112,11 @@ class UNet(nn.Module):
 
         # Decoder + skip connections
         d3 = self.up3(p3)
-        d3 = torch.cat([d3, e2], dim=1)
+        d3 = torch.cat([d3, e3], dim=1)
         d3 = self.dec3(d3)
 
         d2 = self.up2(d3)
-        d2 = torch.cat([d2, e1], dim=1)
+        d2 = torch.cat([d2, e2], dim=1)
         d2 = self.dec2(d2)
 
         d1 = self.up1(d2)
@@ -124,10 +124,11 @@ class UNet(nn.Module):
         # Não há skip adicional aqui
         # pois a resolução já voltou ao tamanho original
         d1 = self.dec1(
-            torch.cat([d1, d1], dim=1)
+            torch.cat([d1, e1], dim=1)
         )
 
         return self.final_conv(d1)
+
 
 
 # ============================================================
@@ -209,11 +210,11 @@ class ResUNet(nn.Module):
         p3 = self.pool(e3)
 
         d3 = self.up3(p3)
-        d3 = torch.cat([d3, e2], dim=1)
+        d3 = torch.cat([d3, e3], dim=1)
         d3 = self.dec3(d3)
 
         d2 = self.up2(d3)
-        d2 = torch.cat([d2, e1], dim=1)
+        d2 = torch.cat([d2, e2], dim=1)
         d2 = self.dec2(d2)
 
         d1 = self.up1(d2)
