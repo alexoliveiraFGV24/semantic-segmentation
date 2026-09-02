@@ -77,25 +77,21 @@ def precision(pred, target, smooth=1e-6):
     return precision_value.mean()
 
 
-def accuracy(pred, target, smooth=1e-6):
-    """
-    Compute the Accuracy between the predicted and target tensors.
+def threshold_mask():
+    pass
 
-    Args:
-        pred (torch.Tensor): The predicted tensor of shape (N, C, H, W).
-        target (torch.Tensor): The target tensor of shape (N, C, H, W).
-        smooth (float): A small value to avoid division by zero.
-    """
 
-    # Flatten the tensors
-    pred_flat = pred.view(pred.size(0), -1)
-    target_flat = target.view(target.size(0), -1)
+def connected_components():
+    pass
 
-    # Compute the true positives and true negatives
-    true_positives = (pred_flat * target_flat).sum(dim=1)
-    true_negatives = ((1 - pred_flat) * (1 - target_flat)).sum(dim=1)
 
-    # Compute the Accuracy
-    accuracy_value = (true_positives + true_negatives + smooth) / (pred_flat.size(1) + smooth)
+def match_instances():
+    pass
 
-    return accuracy_value.mean()
+
+def average_precision():
+    pass
+
+
+def mean_average_precision():
+    pass
