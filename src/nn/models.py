@@ -81,22 +81,22 @@ class UNet(nn.Module):
     def __init__(self, num_classes):
         super().__init__()
 
-        self.enc1 = ConvBlock(3, 64)
-        self.enc2 = ConvBlock(64, 128)
-        self.enc3 = ConvBlock(128, 256)
+        self.enc1 = ConvBlock(3, 32)
+        self.enc2 = ConvBlock(32, 64)
+        self.enc3 = ConvBlock(64, 128)
 
         self.pool = nn.MaxPool2d(2, 2)
 
-        self.up3 = nn.ConvTranspose2d(256, 128, 2, 2)
-        self.dec3 = ConvBlock(384, 128)
+        self.up3 = nn.ConvTranspose2d(128, 64, 2, 2)
+        self.dec3 = ConvBlock(192, 64)
 
-        self.up2 = nn.ConvTranspose2d(128, 64, 2, 2)
-        self.dec2 = ConvBlock(192, 64)
+        self.up2 = nn.ConvTranspose2d(64, 32, 2, 2)
+        self.dec2 = ConvBlock(96, 32)
 
-        self.up1 = nn.ConvTranspose2d(64, 32, 2, 2)
-        self.dec1 = ConvBlock(96, 32)
+        self.up1 = nn.ConvTranspose2d(32, 16, 2, 2)
+        self.dec1 = ConvBlock(48, 16)
 
-        self.final_conv = nn.Conv2d(32, num_classes, 1)
+        self.final_conv = nn.Conv2d(16, num_classes, 1)
 
     def forward(self, x):
 
@@ -455,7 +455,15 @@ def train_loop(dataloader, device, modelo, loss_fc, otimizador):
 
     for X, y in dataloader:
 
-        X, y = X.to(device), y.to(device)
+        X = X.to(
+            device,
+            non_blocking=True
+        )
+
+        y = y.to(
+            device,
+            non_blocking=True
+        )
 
         pred = modelo(X)
         loss = loss_fc(pred, y)
@@ -482,8 +490,15 @@ def test_loop(dataloader, device, modelo, loss_fc):
 
         for X, y in dataloader:
 
-            X, y = X.to(device), y.to(device)
+            X = X.to(
+                device,
+                non_blocking=True
+            )
 
+            y = y.to(
+                device,
+                non_blocking=True
+            )
             outputs = modelo(X)
 
             loss = loss_fc(outputs, y)

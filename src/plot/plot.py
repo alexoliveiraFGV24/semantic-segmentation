@@ -20,7 +20,7 @@ def plot_resultados(model, dataloader, device, num_images=4):
     pred = output.argmax(dim=1)
     num_images = min(num_images, X.size(0))
 
-    fig, axes = plt.subplots(num_images, 3, figsize=(12, 4 * num_images))
+    fig, axes = plt.subplots(num_images, 3, figsize=(12, 2 * num_images))
 
     for i in range(num_images):
 
