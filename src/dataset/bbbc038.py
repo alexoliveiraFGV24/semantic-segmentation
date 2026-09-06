@@ -144,6 +144,38 @@ class BBBC038Dataset(Dataset):
 
         return instances
 
+    def _load_instance_map(
+        self,
+        mask_paths,
+        image_size
+    ):
+
+        width, height = image_size
+
+        instance_map = np.zeros(
+            (height, width),
+            dtype=np.int32
+        )
+
+        for instance_id, mask_path in enumerate(
+            mask_paths,
+            start=1
+        ):
+
+            nucleus = Image.open(
+                mask_path
+            ).convert("L")
+
+            nucleus = np.array(nucleus)
+
+            instance_map[
+                nucleus > 0
+            ] = instance_id
+
+        return Image.fromarray(
+            instance_map
+        )
+
     def __getitem__(self, index):
 
         sample = self.samples[index]
@@ -189,37 +221,42 @@ class SegmentationTransform:
     def __init__(self, size=(256, 256)):
         self.size = size
 
-    def __call__(self, image, mask):
+    def __call__(
+        self,
+        image,
+        instance_map
+    ):
 
-        # Resize
         image = TF.resize(
             image,
             self.size,
             interpolation=TF.InterpolationMode.BILINEAR
         )
 
-        mask = TF.resize(
-            mask,
+        instance_map = TF.resize(
+            instance_map,
             self.size,
             interpolation=TF.InterpolationMode.NEAREST
         )
 
-        # Flip horizontal
         if random.random() > 0.5:
+
             image = TF.hflip(image)
-            mask = TF.hflip(mask)
+            instance_map = TF.hflip(
+                instance_map
+            )
 
-        # Flip vertical
         if random.random() > 0.5:
-            image = TF.vflip(image)
-            mask = TF.vflip(mask)
 
-        # Tensor da imagem
+            image = TF.vflip(image)
+            instance_map = TF.vflip(
+                instance_map
+            )
+
         image = TF.to_tensor(image)
 
-        # Tensor da máscara
-        mask = torch.from_numpy(
-            np.array(mask)
+        instance_map = torch.from_numpy(
+            np.array(instance_map)
         ).long()
 
-        return image, mask
+        return image, instance_map
