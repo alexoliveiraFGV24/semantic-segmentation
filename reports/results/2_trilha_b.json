@@ -1,0 +1,35 @@
+{
+  "IoU (semantico)": 0.5705188145905988,
+  "Dice (semantico)": 0.7086313901421122,
+  "mAP@[.50:.95]": 0.0018461626758340985,
+  "AP@0.50": 0.007865888805369918,
+  "AP@0.75": 0.00027943513936249775,
+  "AP@0.90": 4.98570100950474e-06,
+  "TP@0.50": 215.0,
+  "FP@0.50": 1948.0,
+  "FN@0.50": 5915.0,
+  "erro medio de contagem": 31.470149253731343,
+  "baseline_mesma_rede": {
+    "IoU (semantico)": 0.5705188145905988,
+    "Dice (semantico)": 0.7086313901421122,
+    "mAP@[.50:.95]": 0.0520102487378614,
+    "AP@0.50": 0.18689376578817724,
+    "AP@0.75": 0.017326406232994196,
+    "AP@0.90": 7.30452216482005e-05,
+    "TP@0.50": 1680.0,
+    "FP@0.50": 1457.0,
+    "FN@0.50": 4450.0,
+    "erro medio de contagem": 22.992537313432837
+  },
+  "hiperparametros": {
+    "embedding_dim": 10,
+    "delta_v": 0.5,
+    "delta_d": 1.5,
+    "cluster_method": "mean_shift",
+    "cluster_bandwidth": 0.01,
+    "cluster_merge_radius": 1.5,
+    "min_cluster_size": 15,
+    "fg_threshold": 0.3,
+    "epochs": 10
+  }
+}

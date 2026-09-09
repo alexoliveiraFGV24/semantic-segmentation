@@ -2,6 +2,8 @@ import torch
 import torch.nn as nn
 from scipy import ndimage
 import numpy as np
+import torchvision.transforms.functional as TF
+from PIL import Image
 
 
 def dice(pred, target, smooth=1e-6):
@@ -32,6 +34,9 @@ def IoU(pred, target, smooth=1e-6):
     """
     Compute the Intersection over Union (IoU) between the predicted and target tensors.
 
+    Devolve o COEFICIENTE (quanto maior, melhor), não a perda. Para usar
+    como perda, chame iou_loss().
+
     Args:
         pred (torch.Tensor): The predicted tensor of shape (N, C, H, W).
         target (torch.Tensor): The target tensor of shape (N, C, H, W).
@@ -49,10 +54,16 @@ def IoU(pred, target, smooth=1e-6):
     # Compute the IoU coefficient
     iou_coeff = (intersection + smooth) / (union + smooth)
 
-    # Compute the IoU loss
-    iou_loss_value = 1 - iou_coeff.mean()
+    return iou_coeff.mean()
 
-    return iou_loss_value
+
+def iou_loss(pred, target, smooth=1e-6):
+    """
+    1 - IoU. Este é o valor que se minimiza no treino.
+    """
+
+    return 1 - IoU(pred, target, smooth=smooth)
+
 
 def instance_IoU(pred, target):
     """
@@ -66,6 +77,39 @@ def instance_IoU(pred, target):
         return 0.0
 
     return intersection / union
+
+
+def binary_iou_dice(pred_mask, target_mask):
+    """
+    IoU e Dice semânticos entre duas máscaras binárias de numpy.
+
+    É a métrica da Parte 1 (fundo vs. objeto), calculada sobre arrays
+    booleanos já limiarizados — sem os cuidados de shape das versões
+    em tensor acima.
+
+    Args:
+        pred_mask: array booleano [H, W].
+        target_mask: array booleano [H, W].
+
+    Returns:
+        (iou, dice) como floats.
+    """
+
+    intersection = np.logical_and(pred_mask, target_mask).sum()
+
+    pred_area = pred_mask.sum()
+    target_area = target_mask.sum()
+
+    union = pred_area + target_area - intersection
+
+    if union == 0:
+        # Ambas vazias: acerto perfeito por convenção.
+        return 1.0, 1.0
+
+    iou = intersection / union
+    dice = (2 * intersection) / (pred_area + target_area + 1e-6)
+
+    return float(iou), float(dice)
 
 
 def precision(pred, target, smooth=1e-6):
@@ -318,17 +362,11 @@ def average_precision(predictions, ground_truths, scores, iou_threshold=0.5):
     return float(ap)
 
 
-def mean_average_precision(predictions, ground_truths, scores):
+def mean_average_precision(predictions, ground_truths, scores, thresholds=np.arange(0.50, 0.951, 0.05)):
     """
     mAP para IoU thresholds de 0.50 até 0.95
     com passo de 0.05.
     """
-
-    thresholds = np.arange(
-        0.50,
-        0.951,
-        0.05
-    )
 
     aps = {}
 
@@ -376,3 +414,79 @@ def count_tp_fp_fn(predictions, ground_truths, iou_threshold):
         total_fp,
         total_fn
     )
+
+
+def instance_scores(foreground_probability, instances):
+    """
+    Calcula uma confiança para cada instância.
+
+    A confiança é a probabilidade média de foreground
+    dentro da região da instância.
+    """
+
+    scores = []
+
+    for instance in instances:
+        if instance.sum() == 0:
+            scores.append(0.0)
+            continue
+
+        score = foreground_probability[instance].mean()
+        scores.append(float(score))
+
+    return scores
+
+def evaluate_image(pred_instances, target_instances, pred_scores, iou_threshold):
+    """
+    Avalia uma imagem.
+
+    Retorna:
+        lista de 1/0 indicando TP ou FP para
+        cada previsão, ordenada por score.
+    """
+
+    if len(pred_instances) == 0:
+        return [], len(target_instances)
+
+    # Ordenar pelas maiores confianças
+    order = np.argsort(-np.asarray(pred_scores))
+
+    pred_instances = [pred_instances[i] for i in order]
+
+    pred_scores = [pred_scores[i] for i in order]
+
+    matched_targets = set()
+
+    tp_flags = []
+
+    for pred in pred_instances:
+
+        best_iou = 0.0
+        best_target = None
+
+        for target_idx, target in enumerate(target_instances):
+
+            if target_idx in matched_targets:
+                continue
+
+            iou = instance_IoU(pred, target)
+
+            if iou > best_iou:
+                best_iou = iou
+                best_target = target_idx
+
+        if (best_target is not None and best_iou >= iou_threshold):
+
+            matched_targets.add(best_target)
+
+            # True Positive
+            tp_flags.append(1)
+
+        else:
+
+            # False Positive
+            tp_flags.append(0)
+
+    false_negatives = (len(target_instances) - len(matched_targets))
+
+    return tp_flags, false_negatives

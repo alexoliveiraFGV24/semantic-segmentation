@@ -1,32 +1,12 @@
-"""
-from torch.utils.data import DataLoader
-
-
-transform = SegmentationTransform(
-    size=(256, 256)
-)
-
-dataset = BBBC038Dataset(
-    root="data/stage1_train",
-    transform=transform
-)
-
-dataloader = DataLoader(
-    dataset,
-    batch_size=8,
-    shuffle=True,
-    num_workers=4
-)
-
-"""
-
-
 from pathlib import Path
+
 import numpy as np
 import torch
+
 from PIL import Image
 from torch.utils.data import Dataset
 import torchvision.transforms.functional as TF
+
 import random
 
 
@@ -35,10 +15,31 @@ class BBBC038Dataset(Dataset):
     def __init__(
         self,
         root,
-        transform=None
+        transform=None,
+        mode="semantic"
     ):
+        """
+        Args:
+            root:
+                Caminho para stage1_train.
+
+            transform:
+                Transformação aplicada simultaneamente à imagem
+                e ao target.
+
+            mode:
+                "semantic"  -> máscara binária
+                "instance"  -> mapa de instâncias
+        """
+
+        if mode not in {"semantic", "instance"}:
+            raise ValueError(
+                "mode deve ser 'semantic' ou 'instance'"
+            )
+
         self.root = Path(root)
         self.transform = transform
+        self.mode = mode
 
         self.samples = self._find_samples()
 
@@ -46,6 +47,10 @@ class BBBC038Dataset(Dataset):
             raise RuntimeError(
                 f"Nenhuma amostra encontrada em: {self.root}"
             )
+
+    # ==========================================================
+    # ENCONTRA AS AMOSTRAS
+    # ==========================================================
 
     def _find_samples(self):
 
@@ -66,7 +71,8 @@ class BBBC038Dataset(Dataset):
                 continue
 
             image_files = [
-                f for f in images_dir.iterdir()
+                f
+                for f in images_dir.iterdir()
                 if f.suffix.lower() in {
                     ".png",
                     ".jpg",
@@ -77,11 +83,12 @@ class BBBC038Dataset(Dataset):
             ]
 
             mask_files = [
-                f for f in masks_dir.iterdir()
+                f
+                for f in masks_dir.iterdir()
                 if f.suffix.lower() == ".png"
             ]
 
-            if not image_files:
+            if len(image_files) == 0:
                 continue
 
             samples.append({
@@ -91,13 +98,39 @@ class BBBC038Dataset(Dataset):
 
         return samples
 
+    # ==========================================================
+    # TAMANHO
+    # ==========================================================
+
     def __len__(self):
         return len(self.samples)
 
+    # ==========================================================
+    # CARREGA IMAGEM
+    # ==========================================================
+
     def _load_image(self, path):
+
         return Image.open(path).convert("RGB")
 
-    def _load_mask(self, mask_paths, image_size):
+    # ==========================================================
+    # MÁSCARA SEMÂNTICA
+    # ==========================================================
+
+    def _load_semantic_mask(
+        self,
+        mask_paths,
+        image_size
+    ):
+        """
+        Retorna:
+
+            0 = background
+            1 = foreground
+
+        Formato:
+            [H, W]
+        """
 
         width, height = image_size
 
@@ -112,43 +145,37 @@ class BBBC038Dataset(Dataset):
                 mask_path
             ).convert("L")
 
-            nucleus = np.array(nucleus)
+            nucleus = np.array(
+                nucleus
+            )
 
-            mask[nucleus > 0] = 1
+            mask[
+                nucleus > 0
+            ] = 1
 
         return Image.fromarray(mask)
 
-    def _load_instance_masks(self, mask_paths, size):
-
-        width, height = size
-
-        instances = []
-
-        for mask_path in mask_paths:
-
-            nucleus = Image.open(
-                mask_path
-            ).convert("L")
-
-            nucleus = TF.resize(
-                nucleus,
-                (height, width),
-                interpolation=TF.InterpolationMode.NEAREST
-            )
-
-            nucleus = np.array(nucleus)
-
-            instances.append(
-                nucleus > 0
-            )
-
-        return instances
+    # ==========================================================
+    # MAPA DE INSTÂNCIAS
+    # ==========================================================
 
     def _load_instance_map(
         self,
         mask_paths,
         image_size
     ):
+        """
+        Retorna:
+
+            0 = background
+            1 = instância 1
+            2 = instância 2
+            3 = instância 3
+            ...
+
+        Formato:
+            [H, W]
+        """
 
         width, height = image_size
 
@@ -166,7 +193,9 @@ class BBBC038Dataset(Dataset):
                 mask_path
             ).convert("L")
 
-            nucleus = np.array(nucleus)
+            nucleus = np.array(
+                nucleus
+            )
 
             instance_map[
                 nucleus > 0
@@ -176,6 +205,43 @@ class BBBC038Dataset(Dataset):
             instance_map
         )
 
+    # ==========================================================
+    # MÁSCARAS INDIVIDUAIS
+    # ==========================================================
+
+    def _load_instance_masks(
+        self,
+        mask_paths
+    ):
+        """
+        Retorna uma lista de máscaras booleanas,
+        uma para cada instância.
+
+        Útil para avaliação.
+        """
+
+        instances = []
+
+        for mask_path in mask_paths:
+
+            nucleus = Image.open(
+                mask_path
+            ).convert("L")
+
+            nucleus = np.array(
+                nucleus
+            )
+
+            instances.append(
+                nucleus > 0
+            )
+
+        return instances
+
+    # ==========================================================
+    # GETITEM
+    # ==========================================================
+
     def __getitem__(self, index):
 
         sample = self.samples[index]
@@ -184,48 +250,70 @@ class BBBC038Dataset(Dataset):
             sample["image"]
         )
 
-        mask = self._load_mask(
-            sample["masks"],
-            image.size
-        )
+        # ------------------------------------------------------
+        # Escolhe o target
+        # ------------------------------------------------------
 
-        if self.transform is not None:
+        if self.mode == "semantic":
 
-            image, mask = self.transform(
-                image,
-                mask
+            target = self._load_semantic_mask(
+                sample["masks"],
+                image.size
             )
 
         else:
 
-            # Imagem: [C, H, W]
-            image = (
-                torch.from_numpy(
-                    np.array(image)
-                )
-                .permute(2, 0, 1)
-                .float()
-                / 255.0
+            target = self._load_instance_map(
+                sample["masks"],
+                image.size
             )
 
-            # Máscara: [H, W]
-            mask = torch.from_numpy(
-                np.array(mask)
+        # ------------------------------------------------------
+        # Transform
+        # ------------------------------------------------------
+
+        if self.transform is not None:
+
+            image, target = self.transform(
+                image,
+                target
+            )
+
+        else:
+
+            image = TF.to_tensor(image)
+
+            target = torch.from_numpy(
+                np.array(target)
             ).long()
 
-        return image, mask
+        return image, target
 
+
+# ==========================================================
+# TRANSFORM
+# ==========================================================
 
 class SegmentationTransform:
 
-    def __init__(self, size=(256, 256)):
+    def __init__(
+        self,
+        size=(256, 256),
+        augment=False
+    ):
+
         self.size = size
+        self.augment = augment
 
     def __call__(
         self,
         image,
-        instance_map
+        target
     ):
+
+        # ------------------------------------------------------
+        # Resize
+        # ------------------------------------------------------
 
         image = TF.resize(
             image,
@@ -233,30 +321,58 @@ class SegmentationTransform:
             interpolation=TF.InterpolationMode.BILINEAR
         )
 
-        instance_map = TF.resize(
-            instance_map,
+        target = TF.resize(
+            target,
             self.size,
             interpolation=TF.InterpolationMode.NEAREST
         )
 
-        if random.random() > 0.5:
+        # ------------------------------------------------------
+        # Augmentation
+        # ------------------------------------------------------
 
-            image = TF.hflip(image)
-            instance_map = TF.hflip(
-                instance_map
-            )
+        if self.augment:
 
-        if random.random() > 0.5:
+            if random.random() > 0.5:
 
-            image = TF.vflip(image)
-            instance_map = TF.vflip(
-                instance_map
-            )
+                image = TF.hflip(image)
+                target = TF.hflip(target)
+
+            if random.random() > 0.5:
+
+                image = TF.vflip(image)
+                target = TF.vflip(target)
+
+        # ------------------------------------------------------
+        # Image
+        # ------------------------------------------------------
 
         image = TF.to_tensor(image)
 
-        instance_map = torch.from_numpy(
-            np.array(instance_map)
+        # ------------------------------------------------------
+        # Target
+        # ------------------------------------------------------
+
+        target = np.array(target)
+
+        # ------------------------------------------------------
+        # Para semantic:
+        #
+        # 0, 1, 2, 3, ... não pode existir.
+        #
+        # Garantimos que seja 0/1.
+        #
+        # Isso não deve ser aplicado ao instance map!
+        # ------------------------------------------------------
+
+        if np.max(target) > 1:
+            # Só fazemos isso se necessário?
+            #
+            # NÃO podemos fazer isso para instance mode.
+            pass
+
+        target = torch.from_numpy(
+            target
         ).long()
 
-        return image, instance_map
+        return image, target
