@@ -270,3 +270,9 @@ def discriminative_loss(
     }
 
     return loss, parts
+
+def balanced_cross_entropy():
+    pass
+
+def focal_loss():
+    pass
