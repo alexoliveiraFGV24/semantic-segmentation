@@ -2,8 +2,10 @@ import numpy as np
 import torch
 import torch.nn.functional as F
 
+from scipy import ndimage
 from scipy.spatial.distance import cdist
 from sklearn.cluster import DBSCAN
+from skimage.segmentation import watershed
 
 
 # ==============================================================
@@ -511,3 +513,128 @@ def cluster_embeddings(
         next_id += 1
 
     return instance_map
+
+
+# ==============================================================
+# TRILHA A  --  fronteiras + watershed
+# ==============================================================
+
+
+def instance_map_to_boundary_targets(instance_map, boundary_width=2,
+                                     normalize_distance=True, min_pixels=4):
+    """
+    Alvo da Trilha A.
+
+    Constroi, a partir das mascaras individuais:
+
+        semantic  [H, W] long   0 = fundo
+                                1 = interior  (nucleo erodido -> vira marcador)
+                                2 = fronteira (a casca da instancia)
+
+        distance  [H, W] float  transformada de distancia ao fundo,
+                                normalizada por instancia (0 na borda,
+                                1 no centro). E o relevo que a watershed
+                                inunda a partir dos marcadores.
+
+    Como a fronteira e gerada (resposta as perguntas do enunciado):
+
+      * para cada instancia, EDT interno; "interior" = EDT > boundary_width,
+        "fronteira" = o resto da instancia. Dois nucleos encostados ficam
+        separados por uma faixa de fronteira de ~2*boundary_width, e e essa
+        faixa que a watershed usa para nao fundir os dois.
+      * espessura = `boundary_width` (em pixels da imagem ja redimensionada).
+      * a classe fronteira e minoritaria; o desbalanceamento e tratado na
+        PERDA (balanced CE / focal), nao aqui.
+
+    Args:
+        instance_map: array [H, W]; 0 = fundo, 1.. = instancias.
+        boundary_width: espessura da casca de fronteira.
+        normalize_distance: divide o EDT de cada instancia pelo seu maximo.
+        min_pixels: instancias menores que isso sao ignoradas.
+
+    Returns:
+        semantic  LongTensor [H, W]
+        distance  FloatTensor [H, W]
+    """
+
+    instance_map = np.asarray(instance_map)
+    h, w = instance_map.shape
+
+    semantic = np.zeros((h, w), dtype=np.int64)
+    distance = np.zeros((h, w), dtype=np.float32)
+
+    instance_ids = np.unique(instance_map)
+    instance_ids = instance_ids[instance_ids != 0]
+
+    for instance_id in instance_ids:
+
+        mask = instance_map == instance_id
+
+        if mask.sum() < min_pixels:
+            continue
+
+        edt = ndimage.distance_transform_edt(mask)
+
+        if boundary_width > 0:
+            interior = edt > boundary_width
+        else:
+            interior = mask
+
+        # Instancia fina demais para erodir: mantem o pico do EDT como
+        # interior, senao ela nao gera marcador nenhum.
+        if not interior.any():
+            interior = edt >= edt.max()
+
+        semantic[mask] = 2          # tudo da instancia e fronteira...
+        semantic[interior] = 1      # ...menos o nucleo erodido
+
+        peak = edt.max()
+        if normalize_distance and peak > 0:
+            distance[mask] = edt[mask] / peak
+        else:
+            distance[mask] = edt[mask]
+
+    return torch.from_numpy(semantic), torch.from_numpy(distance)
+
+
+def decode_watershed(interior_mask, foreground_mask, landscape,
+                     min_marker_size=5):
+    """
+    Decodifica instancias por watershed com os interiores como marcadores.
+
+    interior_mask:   [H, W] bool   -- classe "interior" prevista (marcadores)
+    foreground_mask: [H, W] bool   -- onde a inundacao pode crescer (nao-fundo)
+    landscape:       [H, W] float  -- relevo; menor = mais fundo. Passe
+                                      -distance_pred (ou -EDT(foreground)),
+                                      para a agua descer dos centros para as
+                                      fronteiras.
+    min_marker_size: marcadores menores que isso sao descartados (ruido).
+
+    Returns:
+        instance_map: array int [H, W]; 0 = fundo, 1..K = instancias.
+    """
+
+    interior_mask = np.asarray(interior_mask, dtype=bool)
+    foreground_mask = np.asarray(foreground_mask, dtype=bool)
+
+    markers, n_markers = ndimage.label(interior_mask)
+
+    if n_markers == 0:
+        return np.zeros(interior_mask.shape, dtype=np.int32)
+
+    if min_marker_size > 0:
+        # filtro de tamanho vetorizado: bincount + tabela de remapeamento,
+        # sem loop por label nem np.isin (que fica O(n_markers * H * W) e
+        # trava quando um modelo pouco treinado gera milhares de marcadores).
+        sizes = np.bincount(markers.ravel(), minlength=n_markers + 1)
+        remap = np.zeros(n_markers + 1, dtype=np.int32)
+        kept = np.flatnonzero(sizes >= min_marker_size)
+        kept = kept[kept > 0]                       # ignora o fundo (label 0)
+        if len(kept) == 0:
+            return np.zeros(interior_mask.shape, dtype=np.int32)
+        remap[kept] = np.arange(1, len(kept) + 1, dtype=np.int32)
+        markers = remap[markers]
+
+    labels = watershed(landscape, markers, mask=foreground_mask)
+
+    return labels.astype(np.int32)

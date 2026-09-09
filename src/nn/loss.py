@@ -24,30 +24,83 @@ def cross_entropy(pred, target, class_weights=None):
     return loss_value
 
 
-def focal_loss(pred, target, class_weights=None, gamma=2.0):
+def _infer_class_weights(target, num_classes, eps=1e-6):
     """
-    Compute the Balanced Focal loss between the predicted and target tensors.
+    Pesos por frequencia inversa, estimados no proprio batch:
+
+        w_c = N_total / (C * N_c)
+
+    A classe minoritaria (a fronteira, na Trilha A) pesa mais. Classes
+    ausentes no batch recebem peso 0.
+    """
+    with torch.no_grad():
+        counts = torch.bincount(
+            target.reshape(-1),
+            minlength=num_classes,
+        ).to(torch.float32)
+        total = counts.sum().clamp(min=eps)
+        weights = total / (num_classes * counts + eps)
+        weights[counts == 0] = 0.0
+    return weights
+
+
+def balanced_cross_entropy(pred, target, class_weights=None, eps=1e-6):
+    """
+    Cross-entropy com pesos por classe (slide 74).
+
+    Se class_weights for None, os pesos sao calculados no proprio batch
+    por frequencia inversa (ver _infer_class_weights). E o passo
+    CE -> CE balanceada do enunciado (Parte 3, Eixo 2).
 
     Args:
-        pred (torch.Tensor): The predicted tensor of shape (N, C, H, W).
-        target (torch.Tensor): The target tensor of shape (N, H, W) with class indices.
-        class_weights (torch.Tensor): A tensor of shape (C,) containing the weights for each class.
-        alpha (float): The weighting factor for the class imbalance.
-        gamma (float): The focusing parameter to reduce the loss for well-classified examples.
+        pred (torch.Tensor): logits de shape (N, C, H, W).
+        target (torch.Tensor): indices de classe, shape (N, H, W), em [0, C).
+        class_weights: tensor/lista (C,) ou None para calcular no batch.
     """
 
+    num_classes = pred.shape[1]
+
+    if class_weights is None:
+        class_weights = _infer_class_weights(target, num_classes, eps=eps)
+    else:
+        class_weights = torch.as_tensor(class_weights, dtype=pred.dtype)
+
+    return F.cross_entropy(pred, target, weight=class_weights.to(pred.device))
+
+
+def focal_loss(pred, target, class_weights=None, gamma=2.0, eps=1e-6):
+    """
+    Focal loss multiclasse (slides 76-79):
+
+        FL(p_t) = -alpha_c (1 - p_t)^gamma log(p_t)
+
+    gamma concentra o gradiente nos pixels mal classificados (tipicamente
+    a fronteira); class_weights (alpha) corrige o desbalanceamento
+    residual. Com gamma=0 e class_weights=None recai na cross-entropy.
+
+    Args:
+        pred (torch.Tensor): logits de shape (N, C, H, W).
+        target (torch.Tensor): indices de classe, shape (N, H, W), em [0, C).
+        class_weights: tensor/lista (C,), "balanced" para calcular no
+            batch por frequencia inversa, ou None para nao ponderar.
+        gamma (float): parametro de focalizacao.
+    """
+
+    num_classes = pred.shape[1]
+
+    if isinstance(class_weights, str) and class_weights == "balanced":
+        class_weights = _infer_class_weights(target, num_classes, eps=eps)
+
     log_probs = F.log_softmax(pred, dim=1)
+    log_pt = log_probs.gather(1, target.unsqueeze(1)).squeeze(1)
+    pt = log_pt.exp().clamp(min=eps, max=1.0)
 
-    log_pt = log_probs.gather(
-        1,
-        target.unsqueeze(1)
-    ).squeeze(1)
-
-    pt = log_pt.exp()
-
-    loss = -(1 - pt) ** gamma * log_pt
+    loss = -((1.0 - pt) ** gamma) * log_pt
 
     if class_weights is not None:
+        class_weights = torch.as_tensor(
+            class_weights, dtype=loss.dtype, device=loss.device
+        )
         loss = class_weights[target] * loss
 
     return loss.mean()
@@ -270,9 +323,3 @@ def discriminative_loss(
     }
 
     return loss, parts
-
-def balanced_cross_entropy():
-    pass
-
-def focal_loss():
-    pass
