@@ -1,6 +1,4 @@
 """
-Inferencia em mosaico (Parte 4, slide 83).
-
 O slide descreve a pratica padrao para imagens grandes: processar em
 tiles sobrepostos, considerar a parte interna de cada tile e fazer a
 media dos resultados. Para mapas DENSOS (probabilidades, distancia) isso

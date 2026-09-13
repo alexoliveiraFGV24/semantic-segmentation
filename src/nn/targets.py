@@ -8,9 +8,6 @@ from sklearn.cluster import DBSCAN
 from skimage.segmentation import watershed
 
 
-# ==============================================================
-# TRILHA C  --  centro + offsets
-# ==============================================================
 
 
 def instance_map_to_targets(instance_map, sigma=3.0, normalize_offsets=True):
