@@ -1,0 +1,187 @@
+{
+  "eixo1": {
+    "segnet": {
+      "output_stride": 8,
+      "params": 445542,
+      "iou_mean": 0.6653969541518316,
+      "iou_std": 0.006220957737003455,
+      "dice_mean": 0.787392936100788,
+      "dice_std": 0.005018692677275285,
+      "map_mean": 0.09066632930655963,
+      "map_std": 0.014140130001455932,
+      "count_error_mean": 30.79850746268657,
+      "count_error_std": 2.0263358505644358
+    },
+    "unet": {
+      "output_stride": 8,
+      "params": 525334,
+      "iou_mean": 0.6374606564153024,
+      "iou_std": 0.07948690783924778,
+      "dice_mean": 0.7638403584914304,
+      "dice_std": 0.06552632805468948,
+      "map_mean": 0.08353239862393574,
+      "map_std": 0.03292000904173645,
+      "count_error_mean": 31.507462686567163,
+      "count_error_std": 2.923411617741397
+    },
+    "resunet": {
+      "output_stride": 8,
+      "params": 552134,
+      "iou_mean": 0.6894130304166878,
+      "iou_std": 0.0049624972993929034,
+      "dice_mean": 0.8059592555437045,
+      "dice_std": 0.00244211402073329,
+      "map_mean": 0.11366393809901451,
+      "map_std": 0.020148984440172785,
+      "count_error_mean": 28.507462686567166,
+      "count_error_std": 1.625290213473558
+    },
+    "deeplab": {
+      "output_stride": 2,
+      "params": 535014,
+      "iou_mean": 0.6950332896958127,
+      "iou_std": 0.04231495214419701,
+      "dice_mean": 0.8091153505617767,
+      "dice_std": 0.032281621169043755,
+      "map_mean": 0.10071311463459925,
+      "map_std": 0.00424252679197003,
+      "count_error_mean": 31.731343283582092,
+      "count_error_std": 3.145042101396886
+    }
+  },
+  "eixo2": {
+    "CE": {
+      "iou_mean": 0.6502206827036903,
+      "iou_std": 0.1419798693561242,
+      "map_mean": 0.06790091772510712,
+      "map_std": 0.09602639874442617,
+      "count_error_mean": 42.1865671641791,
+      "count_error_std": 10.416632731807798,
+      "recall_fronteira_mean": 0.7077714663351811,
+      "recall_fronteira_std": 0.020457471218379295,
+      "recall_interior_mean": 0.3269430168605151,
+      "recall_interior_std": 0.4623672485673159
+    },
+    "CE balanceada": {
+      "iou_mean": 0.5767340269142621,
+      "iou_std": 0.12765105973997393,
+      "map_mean": 0.0962132321483693,
+      "map_std": 0.026300848950423353,
+      "count_error_mean": 29.003731343283583,
+      "count_error_std": 1.7255516227462757,
+      "recall_fronteira_mean": 0.8582652798976138,
+      "recall_fronteira_std": 0.004524676375348624,
+      "recall_interior_mean": 0.778780843326415,
+      "recall_interior_std": 0.03189344218632833
+    },
+    "Focal gamma=0": {
+      "iou_mean": 0.6502206827036903,
+      "iou_std": 0.1419798693561242,
+      "map_mean": 0.06790091772510712,
+      "map_std": 0.09602639874442617,
+      "count_error_mean": 42.1865671641791,
+      "count_error_std": 10.416632731807798,
+      "recall_fronteira_mean": 0.7077714663351811,
+      "recall_fronteira_std": 0.020457471218379295,
+      "recall_interior_mean": 0.3269430168605151,
+      "recall_interior_std": 0.4623672485673159
+    },
+    "Focal gamma=1": {
+      "iou_mean": 0.6211766038987163,
+      "iou_std": 0.17482014418769923,
+      "map_mean": 0.05401975786335709,
+      "map_std": 0.07639547420647025,
+      "count_error_mean": 43.791044776119406,
+      "count_error_std": 8.14755873247783,
+      "recall_fronteira_mean": 0.6138026529038723,
+      "recall_fronteira_std": 0.0429250855477741,
+      "recall_interior_mean": 0.4979149761067495,
+      "recall_interior_std": 0.2587443824614988
+    },
+    "Focal gamma=2": {
+      "iou_mean": 0.6467835445982468,
+      "iou_std": 0.1236942600187175,
+      "map_mean": 0.044023426457605964,
+      "map_std": 0.0622585267584809,
+      "count_error_mean": 44.67164179104478,
+      "count_error_std": 6.902206490985103,
+      "recall_fronteira_mean": 0.6528304459794678,
+      "recall_fronteira_std": 0.026235705474767106,
+      "recall_interior_mean": 0.608064346467101,
+      "recall_interior_std": 0.038449582059379976
+    },
+    "Focal gamma=5": {
+      "iou_mean": 0.7005313578237047,
+      "iou_std": 0.023090228754953302,
+      "map_mean": 0.05274843490934843,
+      "map_std": 0.00996389736458834,
+      "count_error_mean": 41.72761194029851,
+      "count_error_std": 3.8785334639709856,
+      "recall_fronteira_mean": 0.5897938203808863,
+      "recall_fronteira_std": 0.030727003089969607,
+      "recall_interior_mean": 0.5547253027980603,
+      "recall_interior_std": 0.12933234435145613
+    },
+    "Focal balanceada gamma=0": {
+      "iou_mean": 0.6334514168690814,
+      "iou_std": 0.009231298977973566,
+      "map_mean": 0.09277831040541859,
+      "map_std": 0.002578985566857437,
+      "count_error_mean": 27.638059701492537,
+      "count_error_std": 1.7466592878563223,
+      "recall_fronteira_mean": 0.8457245658479231,
+      "recall_fronteira_std": 0.04037346477216761,
+      "recall_interior_mean": 0.7856933549724945,
+      "recall_interior_std": 0.00584952188025112
+    },
+    "Focal balanceada gamma=1": {
+      "iou_mean": 0.5727811247702846,
+      "iou_std": 0.1642506034424937,
+      "map_mean": 0.10324836491466344,
+      "map_std": 0.04436364768546884,
+      "count_error_mean": 27.462686567164177,
+      "count_error_std": 0.3377226417607376,
+      "recall_fronteira_mean": 0.8169690389648492,
+      "recall_fronteira_std": 0.007806921123039969,
+      "recall_interior_mean": 0.8211725723559582,
+      "recall_interior_std": 0.047502793034809566
+    },
+    "Focal balanceada gamma=2": {
+      "iou_mean": 0.6374606564153024,
+      "iou_std": 0.07948690783924778,
+      "map_mean": 0.08353239862393574,
+      "map_std": 0.03292000904173645,
+      "count_error_mean": 31.507462686567163,
+      "count_error_std": 2.923411617741397,
+      "recall_fronteira_mean": 0.841533837899072,
+      "recall_fronteira_std": 0.0347064930496,
+      "recall_interior_mean": 0.8112170528656808,
+      "recall_interior_std": 0.008059695451717468
+    },
+    "Focal balanceada gamma=5": {
+      "iou_mean": 0.5953916230902233,
+      "iou_std": 0.074998348762449,
+      "map_mean": 0.05205746679902142,
+      "map_std": 0.02194285441296913,
+      "count_error_mean": 37.257462686567166,
+      "count_error_std": 4.026287119741312,
+      "recall_fronteira_mean": 0.854069306982619,
+      "recall_fronteira_std": 0.06623829513420122,
+      "recall_interior_mean": 0.6906688606377492,
+      "recall_interior_std": 0.02288273454881163
+    }
+  },
+  "config": {
+    "epochs_ablation": 6,
+    "seeds": [
+      42,
+      43
+    ],
+    "default_loss_eixo1": {
+      "kind": "focal",
+      "gamma": 2.0,
+      "balanced": true
+    },
+    "default_backbone_eixo2": "unet"
+  }
+}

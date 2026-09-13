@@ -1,0 +1,502 @@
+{
+  "campo_receptivo": {
+    "unet_encoder_px": 36,
+    "unet_saida_px": 64,
+    "unet_camadas": [
+      {
+        "camada": "enc1.conv1",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 1,
+        "RF": 3
+      },
+      {
+        "camada": "enc1.conv2",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 1,
+        "RF": 5
+      },
+      {
+        "camada": "pool1",
+        "k": 2,
+        "s": 2,
+        "d": 1,
+        "jump": 2,
+        "RF": 6
+      },
+      {
+        "camada": "enc2.conv1",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 2,
+        "RF": 10
+      },
+      {
+        "camada": "enc2.conv2",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 2,
+        "RF": 14
+      },
+      {
+        "camada": "pool2",
+        "k": 2,
+        "s": 2,
+        "d": 1,
+        "jump": 4,
+        "RF": 16
+      },
+      {
+        "camada": "enc3.conv1",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 4,
+        "RF": 24
+      },
+      {
+        "camada": "enc3.conv2",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 4,
+        "RF": 32
+      },
+      {
+        "camada": "pool3",
+        "k": 2,
+        "s": 2,
+        "d": 1,
+        "jump": 8,
+        "RF": 36
+      },
+      {
+        "camada": "up3",
+        "k": 1,
+        "s": 0.5,
+        "d": 1,
+        "jump": 4.0,
+        "RF": 36
+      },
+      {
+        "camada": "dec3.conv1",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 4.0,
+        "RF": 44
+      },
+      {
+        "camada": "dec3.conv2",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 4.0,
+        "RF": 52
+      },
+      {
+        "camada": "up2",
+        "k": 1,
+        "s": 0.5,
+        "d": 1,
+        "jump": 2.0,
+        "RF": 52
+      },
+      {
+        "camada": "dec2.conv1",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 2.0,
+        "RF": 56
+      },
+      {
+        "camada": "dec2.conv2",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 2.0,
+        "RF": 60
+      },
+      {
+        "camada": "up1",
+        "k": 1,
+        "s": 0.5,
+        "d": 1,
+        "jump": 1.0,
+        "RF": 60
+      },
+      {
+        "camada": "dec1.conv1",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 1.0,
+        "RF": 62
+      },
+      {
+        "camada": "dec1.conv2",
+        "k": 3,
+        "s": 1,
+        "d": 1,
+        "jump": 1.0,
+        "RF": 64
+      }
+    ],
+    "deeplab_com_sem_atrous": [
+      {
+        "modelo": "DeepLabV3 com atrous (enc3 d=2)",
+        "output stride": 2,
+        "RF encoder (antes da ASPP)": 30,
+        "RF apos ASPP": 102
+      },
+      {
+        "modelo": "DeepLabV3 sem atrous (enc3 d=1)",
+        "output stride": 2,
+        "RF encoder (antes da ASPP)": 22,
+        "RF apos ASPP": 94
+      },
+      {
+        "modelo": "U-Net (3 pools)",
+        "output stride": 8,
+        "RF encoder (antes da ASPP)": 36,
+        "RF apos ASPP": NaN
+      }
+    ],
+    "conferencia_empirica": {
+      "U-Net encoder (formula 36)": [
+        36,
+        36
+      ],
+      "U-Net saida (formula 64, limite sup.)": [
+        60,
+        60
+      ],
+      "DeepLab encoder com atrous (formula 30)": [
+        30,
+        30
+      ],
+      "DeepLab encoder sem atrous (formula 22)": [
+        22,
+        22
+      ],
+      "DeepLab saida com atrous (formula 102 + upsample)": [
+        104,
+        104
+      ],
+      "DeepLab saida sem atrous (formula 94 + upsample)": [
+        96,
+        96
+      ]
+    }
+  },
+  "tamanhos_objetos": {
+    "n_mascaras": 29461,
+    "estatisticas_px": {
+      "nativo": {
+        "mediana": 19.71,
+        "p90": 34.83,
+        "p99": 59.61,
+        "max": 118.54
+      },
+      "@128 (treino)": {
+        "mediana": 6.0,
+        "p90": 12.04,
+        "p99": 21.58,
+        "max": 41.75
+      },
+      "@256 (correcao)": {
+        "mediana": 11.99,
+        "p90": 24.07,
+        "p99": 43.15,
+        "max": 83.5
+      }
+    },
+    "frac_maior_que_rf_encoder": {
+      "nativo": 0.09242727673873935,
+      "@128": 0.00013577271647262481,
+      "@256": 0.03231390652048471
+    },
+    "frac_menor_que_5px": {
+      "nativo": 0.0,
+      "@128": 0.3114965547673195,
+      "@256": 0.08353416380978243
+    }
+  },
+  "galeria": [
+    {
+      "pos": 8,
+      "amostra": "f29fd9c52e04",
+      "nativo": "603x1272",
+      "escala": 0.15,
+      "n_gt": 195,
+      "n_pred": 21,
+      "F1@.5": 0.0,
+      "IoU fg": 0.26,
+      "diam med @128": 2.8,
+      "diam max @128": 4.7,
+      "diam med nativo": 18.9,
+      "% GT < 4px": 98,
+      "% encostados": 90,
+      "brilho": 0.05,
+      "perdido": 0,
+      "fundido": 189,
+      "partido": 0,
+      "mal delimitado": 6,
+      "falso positivo": 13,
+      "dominante": "fundido"
+    },
+    {
+      "pos": 16,
+      "amostra": "7f3888552158",
+      "nativo": "1024x1024",
+      "escala": 0.12,
+      "n_gt": 94,
+      "n_pred": 0,
+      "F1@.5": 0.0,
+      "IoU fg": 0.0,
+      "diam med @128": 1.6,
+      "diam max @128": 3.6,
+      "diam med nativo": 12.8,
+      "% GT < 4px": 100,
+      "% encostados": 52,
+      "brilho": 0.84,
+      "perdido": 94,
+      "fundido": 0,
+      "partido": 0,
+      "mal delimitado": 0,
+      "falso positivo": 0,
+      "dominante": "perdido"
+    },
+    {
+      "pos": 6,
+      "amostra": "b8fdc02d9152",
+      "nativo": "256x256",
+      "escala": 0.5,
+      "n_gt": 21,
+      "n_pred": 22,
+      "F1@.5": 0.047,
+      "IoU fg": 0.391,
+      "diam med @128": 7.9,
+      "diam max @128": 11.0,
+      "diam med nativo": 15.8,
+      "% GT < 4px": 0,
+      "% encostados": 0,
+      "brilho": 0.03,
+      "perdido": 0,
+      "fundido": 0,
+      "partido": 0,
+      "mal delimitado": 20,
+      "falso positivo": 1,
+      "dominante": "mal delimitado"
+    },
+    {
+      "pos": 7,
+      "amostra": "483b89aa6835",
+      "nativo": "256x256",
+      "escala": 0.5,
+      "n_gt": 13,
+      "n_pred": 21,
+      "F1@.5": 0.412,
+      "IoU fg": 0.302,
+      "diam med @128": 7.1,
+      "diam max @128": 10.8,
+      "diam med nativo": 14.3,
+      "% GT < 4px": 8,
+      "% encostados": 0,
+      "brilho": 0.03,
+      "perdido": 0,
+      "fundido": 0,
+      "partido": 0,
+      "mal delimitado": 6,
+      "falso positivo": 9,
+      "dominante": "falso positivo"
+    },
+    {
+      "pos": 94,
+      "amostra": "442c4eb01856",
+      "nativo": "256x320",
+      "escala": 0.45,
+      "n_gt": 16,
+      "n_pred": 29,
+      "F1@.5": 0.489,
+      "IoU fg": 0.673,
+      "diam med @128": 14.2,
+      "diam max @128": 22.5,
+      "diam med nativo": 31.7,
+      "% GT < 4px": 0,
+      "% encostados": 0,
+      "brilho": 0.66,
+      "perdido": 1,
+      "fundido": 0,
+      "partido": 2,
+      "mal delimitado": 2,
+      "falso positivo": 2,
+      "dominante": "partido"
+    }
+  ],
+  "correcao": {
+    "config": {
+      "resolucao": 256,
+      "ft_epochs": 3,
+      "ft_lr": 0.0005,
+      "decode": {
+        "128": {
+          "boundary_width": 1,
+          "min_marker_size": 2
+        },
+        "256": {
+          "boundary_width": 2,
+          "min_marker_size": 4
+        }
+      }
+    },
+    "validacao": {
+      "antes (Parte 4 @128)": {
+        "resolucao": 128,
+        "n_gt": 6051,
+        "IoU (semantico)": 0.6096532620860852,
+        "mAP@[.50:.95]": 0.17099104897301703,
+        "AP@0.50": 0.4894836833911511,
+        "AP@0.75": 0.05795848546785271,
+        "TP@0.50": 3462,
+        "FP@0.50": 1080,
+        "FN@0.50": 2589,
+        "erro medio de contagem": 12.425373134328359,
+        "perdido": 547,
+        "fundido": 1584,
+        "partido": 39,
+        "mal delimitado": 419,
+        "falso positivo": 150
+      },
+      "so inferencia @256": {
+        "resolucao": 256,
+        "n_gt": 6127,
+        "IoU (semantico)": 0.6127211774493861,
+        "mAP@[.50:.95]": 0.18828923014100568,
+        "AP@0.50": 0.46748071537155134,
+        "AP@0.75": 0.13395693412466364,
+        "TP@0.50": 3356,
+        "FP@0.50": 1835,
+        "FN@0.50": 2771,
+        "erro medio de contagem": 13.26865671641791,
+        "perdido": 514,
+        "fundido": 1510,
+        "partido": 100,
+        "mal delimitado": 647,
+        "falso positivo": 484
+      },
+      "controle: +3 ep @128": {
+        "resolucao": 128,
+        "n_gt": 6051,
+        "IoU (semantico)": 0.6773040828767588,
+        "mAP@[.50:.95]": 0.21579782206225487,
+        "AP@0.50": 0.5153052991650122,
+        "AP@0.75": 0.1341651135821576,
+        "TP@0.50": 3591,
+        "FP@0.50": 920,
+        "FN@0.50": 2460,
+        "erro medio de contagem": 12.208955223880597,
+        "perdido": 476,
+        "fundido": 1652,
+        "partido": 38,
+        "mal delimitado": 294,
+        "falso positivo": 110
+      },
+      "depois: +3 ep @256": {
+        "resolucao": 256,
+        "n_gt": 6127,
+        "IoU (semantico)": 0.699316154521827,
+        "mAP@[.50:.95]": 0.27515209946443764,
+        "AP@0.50": 0.5374496750106261,
+        "AP@0.75": 0.2652952725552339,
+        "TP@0.50": 3719,
+        "FP@0.50": 852,
+        "FN@0.50": 2408,
+        "erro medio de contagem": 12.671641791044776,
+        "perdido": 513,
+        "fundido": 1619,
+        "partido": 29,
+        "mal delimitado": 247,
+        "falso positivo": 167
+      }
+    },
+    "galeria_antes_depois": [
+      {
+        "pos": 8,
+        "amostra": "f29fd9c52e04",
+        "F1 antes": 0.0,
+        "F1 depois": 0.0,
+        "n_gt antes": 195,
+        "n_gt depois": 199,
+        "fundidos antes": 189,
+        "fundidos depois": 198,
+        "perdidos antes": 0,
+        "perdidos depois": 0,
+        "FP antes": 13,
+        "FP depois": 11
+      },
+      {
+        "pos": 16,
+        "amostra": "7f3888552158",
+        "F1 antes": 0.0,
+        "F1 depois": 0.0,
+        "n_gt antes": 94,
+        "n_gt depois": 99,
+        "fundidos antes": 0,
+        "fundidos depois": 0,
+        "perdidos antes": 94,
+        "perdidos depois": 99,
+        "FP antes": 0,
+        "FP depois": 0
+      },
+      {
+        "pos": 6,
+        "amostra": "b8fdc02d9152",
+        "F1 antes": 0.047,
+        "F1 depois": 0.279,
+        "n_gt antes": 21,
+        "n_gt depois": 21,
+        "fundidos antes": 0,
+        "fundidos depois": 0,
+        "perdidos antes": 0,
+        "perdidos depois": 0,
+        "FP antes": 1,
+        "FP depois": 1
+      },
+      {
+        "pos": 7,
+        "amostra": "483b89aa6835",
+        "F1 antes": 0.412,
+        "F1 depois": 0.963,
+        "n_gt antes": 13,
+        "n_gt depois": 13,
+        "fundidos antes": 0,
+        "fundidos depois": 0,
+        "perdidos antes": 0,
+        "perdidos depois": 0,
+        "FP antes": 9,
+        "FP depois": 1
+      },
+      {
+        "pos": 94,
+        "amostra": "442c4eb01856",
+        "F1 antes": 0.489,
+        "F1 depois": 0.391,
+        "n_gt antes": 16,
+        "n_gt depois": 16,
+        "fundidos antes": 0,
+        "fundidos depois": 2,
+        "perdidos antes": 1,
+        "perdidos depois": 0,
+        "FP antes": 2,
+        "FP depois": 12
+      }
+    ]
+  }
+}

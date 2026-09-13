@@ -436,6 +436,223 @@ def instance_scores(foreground_probability, instances):
 
     return scores
 
+# ==============================================================
+# MESMAS METRICAS, A PARTIR DE MAPAS DE ROTULOS  (Parte 4)
+# ==============================================================
+#
+# As funcoes acima recebem LISTAS de mascaras booleanas e comparam cada
+# previsao com cada ground truth pixel a pixel: O(P * G * H * W). Numa
+# imagem 128x128 com ~45 nucleos isso e barato; num mosaico 512x512 com
+# ~700 nucleos sao ~10^11 operacoes por limiar -- inviavel.
+#
+# A alternativa e calcular a matriz de IoU (P, G) UMA vez, em O(H * W),
+# por histograma 2D dos pares (id previsto, id verdadeiro), e reaplicar
+# exatamente as mesmas regras de matching sobre a matriz:
+#
+#   * AP: previsoes em ordem de score, cada uma casa com o GT ainda
+#     livre de maior IoU, se IoU >= limiar   (= average_precision);
+#   * TP/FP/FN: guloso por IoU decrescente   (= match_instances).
+#
+# A celula de sanidade do 4_inference.ipynb confere que os dois caminhos
+# dao o mesmo numero numa imagem de validacao.
+# ==============================================================
+
+
+def label_map_overlap_matrix(pred_map, gt_map):
+    """
+    Histograma 2D dos pares (id previsto, id verdadeiro) de dois mapas de
+    rotulos (0 = fundo; ids 1..P e 1..G, contiguos).
+
+    Returns:
+        intersection (P, G) float  pixels em comum entre cada par
+        pred_area    (P,)   float  area de cada instancia prevista
+        gt_area      (G,)   float  area de cada instancia verdadeira
+
+    Ids que nao aparecem no mapa recebem linha/coluna zero. E a base do
+    IoU (abaixo) e da classificacao de erros da Parte 5 (perdido /
+    fundido / partido), que precisa das coberturas, nao so do IoU.
+    """
+
+    pred_map = np.asarray(pred_map)
+    gt_map = np.asarray(gt_map)
+
+    n_pred = int(pred_map.max())
+    n_gt = int(gt_map.max())
+
+    joint = np.bincount(
+        pred_map.ravel().astype(np.int64) * (n_gt + 1) + gt_map.ravel(),
+        minlength=(n_pred + 1) * (n_gt + 1),
+    ).reshape(n_pred + 1, n_gt + 1).astype(np.float64)
+
+    intersection = joint[1:, 1:]
+    pred_area = joint[1:, :].sum(axis=1)
+    gt_area = joint[:, 1:].sum(axis=0)
+
+    return intersection, pred_area, gt_area
+
+
+def label_map_iou_matrix(pred_map, gt_map):
+    """
+    Matriz de IoU (P, G) entre as instancias de dois mapas de rotulos
+    (0 = fundo; ids 1..P e 1..G, contiguos), em O(H * W).
+    """
+
+    intersection, pred_area, gt_area = label_map_overlap_matrix(pred_map, gt_map)
+
+    if intersection.size == 0:
+        return intersection
+
+    union = pred_area[:, None] + gt_area[None, :] - intersection
+
+    return intersection / np.maximum(union, 1.0)
+
+
+def instance_scores_from_map(foreground_probability, label_map):
+    """
+    Versao de `instance_scores` para mapas de rotulos: probabilidade
+    media de foreground dentro de cada id 1..K, em ordem de id.
+    """
+
+    label_map = np.asarray(label_map)
+    n = int(label_map.max())
+
+    if n == 0:
+        return []
+
+    means = ndimage.mean(
+        foreground_probability,
+        labels=label_map,
+        index=np.arange(1, n + 1),
+    )
+
+    return [float(m) for m in means]
+
+
+def greedy_match_from_iou(iou, iou_threshold):
+    """
+    Matching guloso por IoU decrescente sobre uma matriz (P, G) -- a
+    mesma regra de `match_instances`.
+
+    Returns:
+        lista de pares (pred_idx, gt_idx) casados.
+    """
+
+    if iou.size == 0:
+        return []
+
+    candidates = np.argwhere(iou >= iou_threshold)
+
+    if len(candidates) == 0:
+        return []
+
+    order = np.argsort(-iou[candidates[:, 0], candidates[:, 1]])
+
+    matched_pred, matched_gt = set(), set()
+    pairs = []
+
+    for p, g in candidates[order]:
+
+        if p in matched_pred or g in matched_gt:
+            continue
+
+        matched_pred.add(p)
+        matched_gt.add(g)
+        pairs.append((int(p), int(g)))
+
+    return pairs
+
+
+def count_tp_fp_fn_from_iou(iou_matrices, iou_threshold):
+    """`count_tp_fp_fn` a partir de matrizes de IoU (uma por imagem)."""
+
+    total_tp = total_fp = total_fn = 0
+
+    for iou in iou_matrices:
+
+        tp = len(greedy_match_from_iou(iou, iou_threshold))
+
+        total_tp += tp
+        total_fp += iou.shape[0] - tp
+        total_fn += iou.shape[1] - tp
+
+    return total_tp, total_fp, total_fn
+
+
+def average_precision_from_iou(iou_matrices, scores, iou_threshold=0.5):
+    """
+    `average_precision` a partir de matrizes de IoU (uma por imagem) e
+    dos scores de cada previsao (lista por imagem, na ordem dos ids).
+    """
+
+    all_detections = []
+    total_gt = 0
+
+    for iou, image_scores in zip(iou_matrices, scores):
+
+        n_pred, n_gt = iou.shape
+        total_gt += n_gt
+
+        if n_pred == 0:
+            continue
+
+        image_scores = np.asarray(image_scores, dtype=np.float64)
+        order = np.argsort(-image_scores)
+
+        matched = np.zeros(n_gt, dtype=bool)
+
+        for p in order:
+
+            is_tp = 0
+
+            if n_gt > 0:
+
+                row = np.where(matched, -1.0, iou[p])
+                best = int(np.argmax(row))
+
+                if row[best] >= iou_threshold:
+                    matched[best] = True
+                    is_tp = 1
+
+            all_detections.append((image_scores[p], is_tp))
+
+    if total_gt == 0:
+        return 0.0
+
+    all_detections.sort(key=lambda d: d[0], reverse=True)
+
+    tp = np.array([d[1] for d in all_detections], dtype=np.float64)
+    fp = 1 - tp
+
+    cumulative_tp = np.cumsum(tp)
+    cumulative_fp = np.cumsum(fp)
+
+    precision = cumulative_tp / np.maximum(cumulative_tp + cumulative_fp, 1)
+    recall = cumulative_tp / total_gt
+
+    recall = np.concatenate(([0.0], recall, [1.0]))
+    precision = np.concatenate(([1.0], precision, [0.0]))
+
+    for i in range(len(precision) - 2, -1, -1):
+        precision[i] = max(precision[i], precision[i + 1])
+
+    indices = np.where(recall[1:] != recall[:-1])[0]
+
+    return float(np.sum((recall[indices + 1] - recall[indices]) * precision[indices + 1]))
+
+
+def mean_average_precision_from_iou(iou_matrices, scores, thresholds=np.arange(0.50, 0.951, 0.05)):
+    """`mean_average_precision` a partir de matrizes de IoU."""
+
+    aps = {}
+
+    for threshold in thresholds:
+        aps[round(float(threshold), 2)] = average_precision_from_iou(
+            iou_matrices, scores, iou_threshold=threshold
+        )
+
+    return float(np.mean(list(aps.values()))), aps
+
+
 def evaluate_image(pred_instances, target_instances, pred_scores, iou_threshold):
     """
     Avalia uma imagem.
